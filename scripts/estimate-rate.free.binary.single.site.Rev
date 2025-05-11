@@ -1,0 +1,23 @@
+prescence <- readDiscreteCharacterData(args[1])
+tree <- readTrees(args[2])[1] 
+alpha <- args[4]
+r_gain_mean <- args[5] 
+r_loss_mean <- args[6]
+moves  = VectorMoves()
+srl ~ dnGamma(alpha, alpha)
+srg ~ dnGamma(alpha, alpha)
+r_gain := r_gain_mean*srg
+r_loss := r_loss_mean*srl
+Q := fnFreeBinary([r_gain, r_loss], rescaled=FALSE)
+moves.append(mvScale(srl, lambda=1.0, weight=2.0))
+moves.append(mvScale(srg, lambda=1.0, weight=2.0))  
+phylo ~ dnPhyloCTMC(tree=tree, Q=Q, type="Binary")
+phylo.clamp(prescence)
+mymodel = model(phylo)
+monitors = VectorMonitors()
+monitors.append( mnScreen(printgen=1000, srg, srl, r_gain, r_loss) )
+monitors.append(mnModel(filename=args[3], printgen=10))
+mymcmc = mcmc(mymodel, moves, monitors)
+mymcmc.burnin( generations = 10000, tuningInterval = 200)
+mymcmc.run(generations=20000, tuningInterval=200)
+q()
